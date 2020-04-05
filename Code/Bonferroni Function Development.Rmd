@@ -1,0 +1,146 @@
+---
+title: "Bonferroni Function Development"
+Author: "Lynsey Keator"
+Date: "April 2, 2020"
+output: html_notebook
+---
+
+This notebook is for developing a function that will construct a Bonferroni confidence interval. Bonferroni takes Type 1 error rate and divides by number of comparisons
+
+
+This is the bonf.ci function.
+```{r}
+
+bonf_ci <- function(the_data, the_comp, conf_level){
+  
+## These next 2 lines are to create vectors for both the lower and upper bounds of the 
+## confidence interval.  
+  
+  lb <- 1:nrow(the_pairs)
+  ub <- 1:nrow(the_pairs)
+
+## Next, add these to the matric that we will return, but first copy the designation of pairs.
+  
+  the_cis <- cbind(the_pairs, lb, ub)
+
+## Calculate the confidence level when we have a number of comparisons. 
+## Now that I can determine the number of comparisons with the number of rows
+## in the pairs matrix.
+  
+  pair_conf <- cbind(the_pairs, lb, ub)
+
+## Now I loop for the number of comparisons that I am using to construct confidence 
+## intervals.
+  
+  for (i in 1:nrow(the_pairs)){
+    
+## This pulls out the data that I need for the comparison on the designated row,
+## which is tracked by "i" in the loop.
+    
+    pair <- subset(the_data, the_data[,1] == the_pairs[i, 1] |
+                     the_data[,1] == the_pairs[i,2])
+    
+## This calculates the confidence interval.
+    
+    t_results <- t.test(pair[,2] ~ pair[,1], conf.level = pair_conf)
+    
+## These lines pull out the lower and upper bounds and add them to the matrix that I'm going to return.
+    
+    the_cis[i,3] <- t_results$conf.int[1]
+    the_cis[i,4] <- t_results$conf.int[2]
+    
+  }
+
+  return(the_cis)
+}
+```
+
+This is for testing the bonf.ci function with hsb2 data. I assume that the hsb2 data are in the same directory as this notebook.
+
+```{r}
+## Outside of the function, call the here function. When done with fx development, can move function into script and keep with other functions to source in when Bonf is needed.
+
+library(here)
+
+hsb2 <- read.csv(here("Data", "hsb2.csv"))
+
+## This is going to create the matrix to send to the function with my data.
+
+my_data <- cbind(hsb2$ses, hsb2$math)
+
+## Looking at high SES to low SES, medium SES to low SES
+## Each row tells function what comparisons to make
+
+## my_comp <- matrix(c(3, 1,
+##                  2, 1),
+##                  ncol = 2,
+##                  byrow = TRUE)
+
+first <- c(3,2)
+second <- c(1,1)
+my_pairs <- cbind(first, second)
+
+#Obtain CI by calling function
+
+bonf_ci(my_data, my_pairs, 0.95)
+
+```
+
+**Meta Coding:**
+1. Function needs to provide confidence intervals (lower bound and upper bound)
+2. Function will need explanatory and response variables (send in two column matrix)
+  Data needed: matrix
+3. Function will need to know what confidence intervals/what comparisons you want (send in two column matrix, with each row specifying the groups that need to be compared). Consider the example we have four groups (1 control and 3 treatment). These are 3 conditions (1 vs 2, 2 vs 3, 1 vs 4). In the computer's language this is equal to the number of rows.
+  Data needed: matrix
+
+1      2
+1      3
+1      4
+
+*Send explanatory response variables in 1 matrix (#2), send comparisons in a second matrix (#3)*
+
+4. nrow can tell me how many comparisons are needed
+5. Function will need to know what confidence level we want
+  Data needed: numeric
+  
+6. Function will return a matrix with the groups being compared and the lower and upper bound of the intervals
+  Data needed: matrix with data for CIs + ub and lb
+
+1, 2, lb, ub
+1, 3, lb, ub
+1, 4, lb, ub
+
+Subset every row from our data that says either 3 or 1
+Once data are pulled, need to do ttest with those data
+
+*We want a matrix back from the function with the ub and lb attached to comparisons (lb added to 3rd column, ub added to 4th column)*
+
+Of note, when we run ttest, not going to give 95%, we need to divide (and this is indicated by nrow, we need to divide by 3 to control error rate)
+
+**Big Steps:**
+Loop {
+
+Calculate the new confidence level (alpha divided by 2, whats confidence based on that)
+
+t.test, but need to adjust for number of comparisons were giving (nrow)
+
+t.test(y ~ x, conf.level = 0.95)
+
+save the upper and lower bound
+
+}
+
+Look at the first comparison that I want and pull out that data
+
+Put the lower and upper bound in the matrix
+
+Return
+
+#### Future Enhancements
+Here are some ideas for the future.
+* Make is clear which way the means are subtracted.
+* Be able to send a data frame instead of a matrix.
+* Be able to send all the data and then indicate which variables to use in the comparisons
+* Be able to use a factor instead of numbers for the explanatory variable
+* Include some error checking, such as making sure the user picked groups that are actually in the data.
+* Be able to do complex comparisons, not just pairwise.
